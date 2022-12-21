@@ -10,7 +10,7 @@ namespace QandA_App.Data
     {
         private readonly string _connectionString;
 
-        DataRepository(IConfiguration configuration)
+        public DataRepository(IConfiguration configuration)
         {
             //Getting the connection string from appsettings.json
             _connectionString = configuration["ConnectionStrings:DefaultConnection"];

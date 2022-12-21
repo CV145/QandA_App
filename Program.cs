@@ -1,5 +1,6 @@
 using DbUp;
 using Microsoft.Extensions.Configuration;
+using QandA_App.Data;
 
 internal class Program
 {
@@ -10,9 +11,13 @@ internal class Program
         // Add services to the container.
 
         builder.Services.AddControllersWithViews();
+        //The lifetime of the DataRepository class is for that of an entire http request
+        //Whenever IDataRepository is referenced in a constructor, replace it with an instance of DataRepository
+        builder.Services.AddScoped<IDataRepository, DataRepository>();
 
         //Getting connection string to sql database from appsettings.json
         var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
 
         EnsureDatabase.For.SqlDatabase(connectionString);
         //create and configure an instance of the DbUp upgrader
