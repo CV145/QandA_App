@@ -22,16 +22,23 @@ namespace QandA_App.Controllers
 
         //GET response. Data from query parameters is automatically mapped to action method params (model binding)
         [HttpGet]
-        public IEnumerable<QuestionGetManyResponse> GetQuestions(string search)
+        public IEnumerable<QuestionGetManyResponse> GetQuestions(string search, bool includeAnswers, int page = 1, int pageSize = 20)
         {
             if (string.IsNullOrEmpty(search))
             {
-                return _dataRepository.GetQuestions();
+                if (includeAnswers)
+                {
+                    return _dataRepository.GetQuestionsWithAnswers();
+                }
+                else
+                {
+                    return _dataRepository.GetQuestions();
+                }
             }
             else
             {
-                //call data repository question search
-                return _dataRepository.GetQuestionsBySearch(search);
+                //call data repository question search and paging
+                return _dataRepository.GetQuestionsBySearchWithPaging(search, page, pageSize);
             }
         }
 
@@ -66,15 +73,24 @@ namespace QandA_App.Controllers
         [HttpPost]
         public ActionResult<QuestionGetSingleResponse> PostQuestion(QuestionPostRequest questionPostRequest)
         {
+            Console.WriteLine("Posting new question...");
+            Console.WriteLine("Title: " + questionPostRequest.Title);
+            Console.WriteLine("Content: " + questionPostRequest.Content);
             //call the data repository to save the question
             var savedQuestion = _dataRepository.PostQuestion(new QuestionPostFullRequest
             {
+                //Use info contained in the post request
                 Title = questionPostRequest.Title,
                 Content= questionPostRequest.Content,
                 UserId = "1",
                 UserName = "bob.test@test.com",
                 Created= DateTime.UtcNow,
             });
+
+            Console.WriteLine("Question posted");
+            Console.WriteLine("Saved title: " + savedQuestion.Title);
+            Console.WriteLine("Saved content: " + savedQuestion.Content);
+            Console.WriteLine("Saved id: " + savedQuestion.QuestionId);
 
             //return HTTP status code 201 - signify resource has been created
             return CreatedAtAction(nameof(GetQuestion), new { questionId = savedQuestion.QuestionId }, savedQuestion);

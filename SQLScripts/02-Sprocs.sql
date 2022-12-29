@@ -12,15 +12,13 @@ BEGIN
 END
 GO
 
-CREATE PROC dbo.Answer_Get_ByQuestionId
-	(
-	@QuestionId int
-)
+/* Get the answer for the question with the given ID. @QuestionId = parameter we pass in */
+CREATE PROC dbo.Answer_Get_ByQuestionId(@QuestionId int)
 AS
 BEGIN
 	SET NOCOUNT ON
 
-	SELECT AnswerId, QuestionId, Content, Username, Created
+	SELECT AnswerId, QuestionId, Content, UserName, Created
 	FROM dbo.Answer 
 	WHERE QuestionId = @QuestionId
 END

@@ -10,5 +10,7 @@
         public string Content { get; set; } 
         public string UserName { get; set; }
         public DateTime Created { get; set; }
+        //A list of AnswerGetResponses
+        public List<AnswerGetResponse> Answers { get; set; }
     }
 }

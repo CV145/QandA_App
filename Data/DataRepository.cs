@@ -2,6 +2,7 @@
 using Dapper;
 using Microsoft.Identity.Client;
 using QandA_App.Data.Models;
+using static Dapper.SqlMapper;
 
 namespace QandA_App.Data
 {
@@ -51,6 +52,32 @@ namespace QandA_App.Data
             }
         }
 
+        public IEnumerable<QuestionGetManyResponse> GetQuestionsWithAnswers()
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                //Dictionary of questions with key = question ID
+                var questionDictionary = new Dictionary<int, QuestionGetManyResponse>();
+                //Execute query using Dapper
+                return connection.Query<QuestionGetManyResponse, AnswerGetResponse, QuestionGetManyResponse>
+                    ("EXEC dbo.Question_GetMany_WithAnswers", map: (q, a) =>
+                    {
+                        QuestionGetManyResponse question;
+                        if (!questionDictionary.TryGetValue(q.QuestionId, out question))
+                        {
+                            question = q;
+                            question.Answers = new List<AnswerGetResponse>();
+                            questionDictionary.Add(question.QuestionId, question);
+                        }
+                        question.Answers.Add(a);
+                        return question;
+                    },
+                    splitOn: "QuestionId"
+                    ).Distinct().ToList();
+            }
+        }
+
         public IEnumerable<QuestionGetManyResponse> GetQuestionsBySearch(string search)
         {
             using (var connection = new SqlConnection(_connectionString))
@@ -65,6 +92,21 @@ namespace QandA_App.Data
             }
         }
 
+        public IEnumerable<QuestionGetManyResponse> GetQuestionsBySearchWithPaging(string search, int pageNumber, int pageSize)
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                var parameters = new
+                {
+                    Search = search,
+                    PageNumber = pageNumber,
+                    PageSize = pageSize
+                };
+                return connection.Query<QuestionGetManyResponse>(@"EXEC dbo.Question_GetMany_BySearch_WithPaging @Search = @Search, @PageNumber = @PageNumber, @PageSize = @PageSize", parameters);
+            }
+        }
+
         public IEnumerable<QuestionGetManyResponse> GetUnansweredQuestions()
         {
             using (var connection = new SqlConnection(_connectionString))
@@ -76,30 +118,26 @@ namespace QandA_App.Data
             }
         }
 
+        //GET a question by id
         public QuestionGetSingleResponse GetQuestion(int questionId)
         {
+            Console.WriteLine("Getting question with ID " + questionId);
             using (var connection = new SqlConnection(_connectionString))
             {
                 connection.Open();
-                //Return a single record or null if not found
-                var question = connection.QueryFirstOrDefault<QuestionGetSingleResponse>(
-                    @"EXEC dbo.Question_GetSingle @QuestionId = @QuestionId",
-                    new { QuestionId = questionId });
-                // Get the answers for the question
-                question.Answers = connection.Query<AnswerGetResponse>(
-                    @"EXEC dbo.Answer_Get_ByQuestionId
-                    @QuestionId = questionId",
-                    new {QuestionId = questionId});
-                if (question != null)
-                {
-                    question.Answers = connection.Query<AnswerGetResponse>(
-                        @"EXEC dbo.Answer_Get_ByQuestionId
-                        @QuestionId = @QuestionId",
-                        new {QuestionId = questionId});
-                }
 
-                //Return the question retrieved
-                return question;
+                //Getting multiple results from Dapper query (2 stored procedures in a single database round trip), stored into a GridReader
+                using (GridReader results = connection.QueryMultiple(@"EXEC dbo.Question_GetSingle @QuestionId = @QuestionId; EXEC dbo.Answer_Get_ByQuestionId @QuestionId = @QuestionId",
+                    new { QuestionId = questionId }))
+                {
+                    //Read() the next Grid in results
+                    var question = results.Read<QuestionGetSingleResponse>().FirstOrDefault();
+                    if (question != null)
+                    {
+                        question.Answers = results.Read<AnswerGetResponse>().ToList();
+                    }
+                    return question;
+                }
             }
         }
 
@@ -162,6 +200,16 @@ namespace QandA_App.Data
                 return connection.QueryFirst<AnswerGetResponse>(@"EXEC dbo.Answer_Post @QuestionId = @QuestionId,
                 @Content = @Content, @UserId = @UserId, @UserName = @UserName, @Created = @Created", answer);
             }
+        }
+
+        IEnumerable<QuestionGetManyResponse> IDataRepository.GetQuestionsWithAnswers()
+        {
+            throw new NotImplementedException();
+        }
+
+        public AnswerGetResponse PostAnswer(AnswerPostFullRequest answer)
+        {
+            throw new NotImplementedException();
         }
     }
 }

@@ -7,7 +7,10 @@ namespace QandA_App.Data
     {
         //Read data
         IEnumerable<QuestionGetManyResponse> GetQuestions();
+        IEnumerable<QuestionGetManyResponse> GetQuestionsWithAnswers(); //Get all questions from database and their answers
         IEnumerable<QuestionGetManyResponse> GetQuestionsBySearch(string search);
+        //Return questions in pages
+        IEnumerable<QuestionGetManyResponse> GetQuestionsBySearchWithPaging(string search, int pageNumber, int pageSize);
         IEnumerable<QuestionGetManyResponse> GetUnansweredQuestions();
         QuestionGetSingleResponse GetQuestion(int questionId);
         bool QuestionExists(int questionId);
