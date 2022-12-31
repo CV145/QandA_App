@@ -13,11 +13,15 @@ namespace QandA_App.Controllers
         //Reference to repository
         private readonly IDataRepository _dataRepository;
 
+        //Injecting cache
+        private readonly IQuestionCache _cache;
+
         //Constructor - dependency injection to pass in data repository instance
-        public QuestionsController(IDataRepository dataRepository)
+        public QuestionsController(IDataRepository dataRepository, IQuestionCache questionCache)
         {
             //Reference to data repository
             _dataRepository = dataRepository;
+            _cache = questionCache;
         }
 
         //GET response. Data from query parameters is automatically mapped to action method params (model binding)
@@ -42,10 +46,11 @@ namespace QandA_App.Controllers
             }
         }
 
+        //Return a response sometime in the future
         [HttpGet("unanswered")]
-        public IEnumerable<QuestionGetManyResponse> GetUnansweredQuestions()
+        public async Task<IEnumerable<QuestionGetManyResponse>> GetUnansweredQuestions()
         {
-            return _dataRepository.GetUnansweredQuestions();
+            return await _dataRepository.GetUnansweredQuestionsAsync();
         }
 
         //HTTP GET has an attribute parameter placed in subpath:
@@ -54,14 +59,21 @@ namespace QandA_App.Controllers
         [HttpGet("{questionId}")]
         public ActionResult<QuestionGetSingleResponse> GetQuestion(int questionId)
         {
-            //call the data repository to get the question
-            var question = _dataRepository.GetQuestion(questionId);
+            //retrieve question from cache
+            var question = _cache.Get(questionId);
 
             //return http status 404 if question not found
+            //Not in cache? Search data repository instead
             if (question == null)
             {
-                //ActionResult
-                return NotFound(); 
+                question = _dataRepository.GetQuestion(questionId);
+                if (question == null)
+                {
+                    return NotFound();
+                }
+
+                //Put the question in the cache
+                _cache.Set(question);
             }
 
             //return question in response with status 200
@@ -117,6 +129,8 @@ namespace QandA_App.Controllers
             //call the data repository with the updated question model to update the question
             var savedQuestion = _dataRepository.PutQuestion(questionId, questionPutRequest);
 
+            _cache.Remove(savedQuestion.QuestionId);
+
             //return the saved question
             return savedQuestion;
         }
@@ -131,7 +145,10 @@ namespace QandA_App.Controllers
             {
                 return NotFound();
             }
+
+            //Delete from both cache and repo
             _dataRepository.DeleteQuestion(questionId);
+            _cache.Remove(questionId);
             return NoContent();
         }
 
@@ -151,6 +168,7 @@ namespace QandA_App.Controllers
                 UserName = "bob.test@test.com",
                 Created = DateTime.UtcNow
             });
+            _cache.Remove(answerPostRequest.QuestionId.Value);
             return savedAnswer;
         }
     }

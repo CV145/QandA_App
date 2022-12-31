@@ -118,6 +118,15 @@ namespace QandA_App.Data
             }
         }
 
+        public async Task<IEnumerable<QuestionGetManyResponse>> GetUnansweredQuestionsAsync()
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                return await connection.QueryAsync<QuestionGetManyResponse>("EXEC dbo.Question_GetUnanswered");
+            }
+        }
+
         //GET a question by id
         public QuestionGetSingleResponse GetQuestion(int questionId)
         {

@@ -15,6 +15,11 @@ internal class Program
         //Whenever IDataRepository is referenced in a constructor, replace it with an instance of DataRepository
         builder.Services.AddScoped<IDataRepository, DataRepository>();
 
+        //Registering memory cache
+        builder.Services.AddMemoryCache();
+        //Setting the cache as a singleton
+        builder.Services.AddSingleton<IQuestionCache, QuestionCache>();
+
         //Getting connection string to sql database from appsettings.json
         var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
